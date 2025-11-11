@@ -23,20 +23,20 @@ jobs:
           --health-retries=10
 
     env:
-      DB_HOST: 127.0.0.1
+      DB_HOST: mysql        # This is the hostname of the service in GitHub Actions
       DB_PORT: 3306
       DB_NAME: subscriptions_dhruv
       DB_USER: root
       DB_PASSWORD: DhruvPass!9062297
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Wait for MySQL to be ready
         run: |
           for i in {1..30}; do
-            mysqladmin ping -h 127.0.0.1 -P 3306 -u root -p"${{ env.DB_PASSWORD }}" && break
+            mysqladmin ping -h ${{ env.DB_HOST }} -P ${{ env.DB_PORT }} -u ${{ env.DB_USER }} -p"${{ env.DB_PASSWORD }}" && break
             echo "Waiting for MySQL..."
             sleep 2
           done
@@ -44,26 +44,21 @@ jobs:
       - name: Show MySQL version
         run: mysql --version || true
 
-      - name: Install Flyway CLI
-        run: |
-          curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/10.22.0/flyway-commandline-10.22.0-linux-x64.tar.gz -o flyway.tar.gz
-          tar -xzf flyway.tar.gz
-          sudo ln -s $PWD/flyway-10.22.0/flyway /usr/local/bin/flyway
-          flyway -v
-
       - name: Run Flyway initial migrations
         run: |
-            flyway -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
-                  -user="${{ env.DB_USER }}" \
-                  -password="${{ env.DB_PASSWORD }}" \
-                  -locations="filesystem:flyway/migrations_initial" migrate
+          docker run --rm -v "${{ github.workspace }}/flyway":/flyway/sql flyway/flyway:10 \
+          -url="jdbc:mysql://${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+          -user="${{ env.DB_USER }}" \
+          -password="${{ env.DB_PASSWORD }}" \
+          -locations="filesystem:/flyway/sql/migrations_initial" migrate
 
       - name: Run Flyway incremental migrations
         run: |
-          flyway -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
-                -user="${{ env.DB_USER }}" \
-                -password="${{ env.DB_PASSWORD }}" \
-                -locations="filesystem:flyway/migrations_incremental" migrate
+          docker run --rm -v "${{ github.workspace }}/flyway":/flyway/sql flyway/flyway:10 \
+          -url="jdbc:mysql://${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+          -user="${{ env.DB_USER }}" \
+          -password="${{ env.DB_PASSWORD }}" \
+          -locations="filesystem:/flyway/sql/migrations_incremental" migrate
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -82,7 +77,7 @@ jobs:
           DB_NAME: ${{ env.DB_NAME }}
           DB_USER: ${{ env.DB_USER }}
           DB_PASSWORD: ${{ env.DB_PASSWORD }}
-        run: pytest -q
+        run: pytest -v
 
       - name: Deployment echo
         run: echo "Deployment done for commit ${{ github.sha }}"
