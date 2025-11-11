@@ -1,0 +1,50 @@
+---
+- name: Bring up MySQL and run Flyway migrations 
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    mysql_container_name: a4-mysql-dhruv
+    mysql_image: mysql:8
+    mysql_root_password: "DhruvPass!9062297"
+    mysql_database: subscriptions_dhruv
+    flyway_local_dir: "{{ playbook_dir }}/../flyway"
+  tasks:
+    - name: Ensure community.docker collection is present
+      ansible.builtin.command: ansible-galaxy collection install community.docker
+      changed_when: false
+      failed_when: false
+
+    - name: Start MySQL container
+      community.docker.docker_container:
+        name: "{{ mysql_container_name }}"
+        image: "{{ mysql_image }}"
+        state: started
+        restart_policy: unless-stopped
+        env:
+          MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
+          MYSQL_DATABASE: "{{ mysql_database }}"
+        published_ports:
+          - "3306:3306"
+
+    - name: Wait for MySQL service to be reachable
+      wait_for:
+        host: 127.0.0.1
+        port: 3306
+        delay: 5
+        timeout: 60
+
+    - name: Run Flyway initial migrations (inside Flyway Docker)
+      community.docker.docker_container:
+        name: flyway_runner_dhruv
+        image: flyway/flyway:10
+        command:
+          - -url=jdbc:mysql://host.docker.internal:3306/{{ mysql_database }}
+          - -user=root
+          - -password={{ mysql_root_password }}
+          - -locations=filesystem:/flyway/migrations_initial
+          - migrate
+        volumes:
+          - "{{ flyway_local_dir }}:/flyway"
+        autoremove: true
+        detach: false

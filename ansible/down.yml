@@ -1,0 +1,13 @@
+---
+- name: Assignment 4 MySQL container
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    mysql_container_name: a4-mysql-dhruv
+  tasks:
+    - name: Stop and remove MySQL container
+      community.docker.docker_container:
+        name: "{{ mysql_container_name }}"
+        state: absent
+        force_kill: true

@@ -1,0 +1,80 @@
+name: CI — Flyway + Tests (Dhruv)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  test-and-migrate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: DhruvPass!9062297
+          MYSQL_DATABASE: subscriptions_dhruv
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: subscriptions_dhruv
+      DB_USER: root
+      DB_PASSWORD: DhruvPass!9062297
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            mysqladmin ping -h 127.0.0.1 -P 3306 -u root -p"${{ env.DB_PASSWORD }}" && break
+            echo "Waiting for mysql..."
+            sleep 2
+          done
+
+      - name: Show MySQL version
+        run: mysql --version || true
+
+      - name: Run Flyway initial migrations
+        run: |
+          docker run --rm -v "${{ github.workspace }}/flyway":/flyway flyway/flyway:10 \
+            -url=jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false \
+            -user=${{ env.DB_USER }} \
+            -password=${{ env.DB_PASSWORD }} \
+            -locations=filesystem:/flyway/migrations_initial migrate
+
+      - name: Run Flyway incremental migrations
+        run: |
+          docker run --rm -v "${PWD}/flyway:/flyway/sql" --network host flyway/flyway:10 -url="jdbc:mysql://127.0.0.1:3307/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false" -user="root" -password="DhruvPass!9062297" -locations="filesystem:/flyway/sql/migrations_initial,filesystem:/flyway/sql/migrations_incremental" migrate
+
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest tests
+        env:
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD: ${{ env.DB_PASSWORD }}
+        run: pytest -q
+
+      - name: Deployment echo
+        run: echo "Deployment done for commit ${{ github.sha }}"
