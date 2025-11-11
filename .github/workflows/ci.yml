@@ -23,7 +23,7 @@ jobs:
           --health-retries=10
 
     env:
-      DB_HOST: mysql
+      DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_NAME: subscriptions_dhruv
       DB_USER: root
