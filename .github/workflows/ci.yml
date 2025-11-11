@@ -46,11 +46,10 @@ jobs:
 
       - name: Run Flyway initial migrations
         run: |
-          docker run --rm -v "${{ github.workspace }}/flyway":/flyway flyway/flyway:10 \
-            -url=jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false \
-            -user=${{ env.DB_USER }} \
-            -password=${{ env.DB_PASSWORD }} \
-            -locations=filesystem:/flyway/migrations_initial migrate
+          docker run --rm -v "${PWD}/flyway:/flyway/sql" --network host flyway/flyway:10 \
+          -url="jdbc:mysql://127.0.0.1:3307/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false" \
+          -user="root" -password="DhruvPass!9062297" \
+          -locations="filesystem:/flyway/sql/migrations_initial" migrate
 
       - name: Run Flyway incremental migrations
         run: |
