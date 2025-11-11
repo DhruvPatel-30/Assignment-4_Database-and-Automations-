@@ -44,21 +44,26 @@ jobs:
       - name: Show MySQL version
         run: mysql --version || true
 
+      - name: Install Flyway CLI
+        run: |
+          curl -L https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/10.22.0/flyway-commandline-10.22.0-linux-x64.tar.gz -o flyway.tar.gz
+          tar -xzf flyway.tar.gz
+          sudo ln -s $PWD/flyway-10.22.0/flyway /usr/local/bin/flyway
+          flyway -v
+
       - name: Run Flyway initial migrations
         run: |
-          docker run --rm -v "${{ github.workspace }}/flyway:/flyway/sql" flyway/flyway:10 \
-          -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
-          -user="${{ env.DB_USER }}" \
-          -password="${{ env.DB_PASSWORD }}" \
-          -locations=filesystem:/flyway/sql/migrations_initial migrate
+            flyway -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+                  -user="${{ env.DB_USER }}" \
+                  -password="${{ env.DB_PASSWORD }}" \
+                  -locations="filesystem:flyway/migrations_initial" migrate
 
       - name: Run Flyway incremental migrations
         run: |
-          docker run --rm -v "${{ github.workspace }}/flyway:/flyway/sql" flyway/flyway:10 \
-          -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
-          -user="${{ env.DB_USER }}" \
-          -password="${{ env.DB_PASSWORD }}" \
-          -locations=filesystem:/flyway/sql/migrations_initial,filesystem:/flyway/sql/migrations_incremental migrate
+          flyway -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+                -user="${{ env.DB_USER }}" \
+                -password="${{ env.DB_PASSWORD }}" \
+                -locations="filesystem:flyway/migrations_incremental" migrate
 
       - name: Set up Python
         uses: actions/setup-python@v4
