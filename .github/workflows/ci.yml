@@ -8,6 +8,7 @@ on:
 jobs:
   test-and-migrate:
     runs-on: ubuntu-latest
+
     services:
       mysql:
         image: mysql:8
@@ -30,14 +31,14 @@ jobs:
       DB_PASSWORD: DhruvPass!9062297
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Wait for MySQL to be ready
         run: |
           for i in {1..30}; do
             mysqladmin ping -h 127.0.0.1 -P 3306 -u root -p"${{ env.DB_PASSWORD }}" && break
-            echo "Waiting for mysql..."
+            echo "Waiting for MySQL..."
             sleep 2
           done
 
@@ -46,26 +47,28 @@ jobs:
 
       - name: Run Flyway initial migrations
         run: |
-          docker run --rm -v "${{ github.workspace }}/flyway":/flyway flyway/flyway:10 \
+          docker run --rm -v "${{ github.workspace }}/flyway":/flyway \
+            flyway/flyway:10 migrate \
             -url=jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }} \
             -user=${{ env.DB_USER }} \
             -password=${{ env.DB_PASSWORD }} \
-            -locations=filesystem:/flyway/migrations_initial migrate
+            -locations=filesystem:/flyway/migrations_initial
 
       - name: Run Flyway incremental migrations
         run: |
-          docker run --rm -v "${{ github.workspace }}/flyway":/flyway flyway/flyway:10 \
+          docker run --rm -v "${{ github.workspace }}/flyway":/flyway \
+            flyway/flyway:10 migrate \
             -url=jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }} \
             -user=${{ env.DB_USER }} \
             -password=${{ env.DB_PASSWORD }} \
-            -locations=filesystem:/flyway/migrations_incremental migrate
+            -locations=filesystem:/flyway/migrations_incremental
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Install requirements
+      - name: Install Python requirements
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
