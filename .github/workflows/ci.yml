@@ -47,7 +47,7 @@ jobs:
       - name: Run Flyway initial migrations
         run: |
           docker run --rm -v "${{ github.workspace }}/flyway:/flyway/sql" flyway/flyway:10 \
-          -url="jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+          -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
           -user="${{ env.DB_USER }}" \
           -password="${{ env.DB_PASSWORD }}" \
           -locations=filesystem:/flyway/sql/migrations_initial migrate
@@ -55,7 +55,7 @@ jobs:
       - name: Run Flyway incremental migrations
         run: |
           docker run --rm -v "${{ github.workspace }}/flyway:/flyway/sql" flyway/flyway:10 \
-          -url="jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+          -url="jdbc:mysql://mysql:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
           -user="${{ env.DB_USER }}" \
           -password="${{ env.DB_PASSWORD }}" \
           -locations=filesystem:/flyway/sql/migrations_initial,filesystem:/flyway/sql/migrations_incremental migrate
