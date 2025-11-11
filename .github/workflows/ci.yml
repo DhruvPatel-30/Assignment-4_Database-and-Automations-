@@ -37,7 +37,7 @@ jobs:
         run: |
           for i in {1..30}; do
             mysqladmin ping -h 127.0.0.1 -P 3306 -u root -p"${{ env.DB_PASSWORD }}" && break
-            echo "Waiting for mysql..."
+            echo "Waiting for MySQL..."
             sleep 2
           done
 
@@ -46,15 +46,19 @@ jobs:
 
       - name: Run Flyway initial migrations
         run: |
-          docker run --rm -v "${PWD}/flyway:/flyway/sql" --network host flyway/flyway:10 \
-          -url="jdbc:mysql://127.0.0.1:3307/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false" \
-          -user="root" -password="DhruvPass!9062297" \
-          -locations="filesystem:/flyway/sql/migrations_initial" migrate
+          docker run --rm -v "${{ github.workspace }}/flyway:/flyway/sql" flyway/flyway:10 \
+          -url="jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+          -user="${{ env.DB_USER }}" \
+          -password="${{ env.DB_PASSWORD }}" \
+          -locations=filesystem:/flyway/sql/migrations_initial migrate
 
       - name: Run Flyway incremental migrations
         run: |
-          docker run --rm -v "${PWD}/flyway:/flyway/sql" --network host flyway/flyway:10 -url="jdbc:mysql://127.0.0.1:3307/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false" -user="root" -password="DhruvPass!9062297" -locations="filesystem:/flyway/sql/migrations_initial,filesystem:/flyway/sql/migrations_incremental" migrate
-
+          docker run --rm -v "${{ github.workspace }}/flyway:/flyway/sql" flyway/flyway:10 \
+          -url="jdbc:mysql://127.0.0.1:3306/${{ env.DB_NAME }}?allowPublicKeyRetrieval=true&useSSL=false" \
+          -user="${{ env.DB_USER }}" \
+          -password="${{ env.DB_PASSWORD }}" \
+          -locations=filesystem:/flyway/sql/migrations_initial,filesystem:/flyway/sql/migrations_incremental migrate
 
       - name: Set up Python
         uses: actions/setup-python@v4
