@@ -47,3 +47,4 @@
           -password={{ mysql_root_password }}
           -locations=filesystem:/flyway/migrations_initial
           migrate
+
