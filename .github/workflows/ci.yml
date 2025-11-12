@@ -1,4 +1,4 @@
-name: CI — Flyway + Tests + Ansible (Dhruv)
+name: CI — Flyway + Tests (Dhruv)
 
 on:
   push:
@@ -14,38 +14,66 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up Python (for pytest & Ansible)
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-
-      - name: Install Python dependencies
+      # 2. Start MySQL container
+      - name: Start MySQL container
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ansible[community.docker]  # for docker modules
-          
+          docker run -d \
+            --name a4-mysql-dhruv \
+            -e MYSQL_ROOT_PASSWORD=DhruvPass!9062297 \
+            -e MYSQL_DATABASE=subscriptions_dhruv \
+            -p 3307:3306 \
+            mysql:8
 
-      - name: Start MySQL via Ansible
-        env:
-          DOCKER_HOST: unix:///var/run/docker.sock
-        run: ansible-playbook ansible/up.yml
+      # 3. Wait for MySQL to be ready
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Waiting for MySQL to be ready..."
+          for i in {1..30}; do
+            if docker exec a4-mysql-dhruv mysqladmin ping -h127.0.0.1 -uroot -pDhruvPass!9062297 --silent; then
+              echo "MySQL is ready!"
+              break
+            fi
+            sleep 3
+          done
 
-            # 4. Run pytest tests (CRUD + DB validation)
+      # 4. Run Flyway initial migrations
+      - name: Run Flyway initial migrations
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/flyway:/flyway \
+            flyway/flyway:10 \
+            -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv \
+            -user=root \
+            -password=DhruvPass!9062297 \
+            -locations=filesystem:/flyway/migrations_initial \
+            migrate
+
+      # 5. Run Flyway incremental migrations
+      - name: Run Flyway incremental migrations
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/flyway:/flyway \
+            flyway/flyway:10 \
+            -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv \
+            -user=root \
+            -password=DhruvPass!9062297 \
+            -locations=filesystem:/flyway/migrations_incremental \
+            migrate
+
+      # 6. Run pytest tests
       - name: Run CRUD tests
         env:
           DB_HOST: 127.0.0.1
-          DB_PORT: 3306
+          DB_PORT: 3307
           DB_NAME: subscriptions_dhruv
           DB_USER: root
           DB_PASSWORD: DhruvPass!9062297
-        run: pytest -v tests/test_subscribers.py
+        run: pytest -q tests/test_subscribers.py
 
-      # 5. Tear down environment
-      - name: Stop MySQL via Ansible
-        run: ansible-playbook ansible/down.yml
+      # 7. Stop MySQL container
+      - name: Stop and remove MySQL container
+        run: docker rm -f a4-mysql-dhruv || true
 
-      # 6. Deployment complete message
+      # 8. Deployment complete message
       - name: Deployment done
-        run: echo "✅ CI/CD pipeline complete for commit ${{ github.sha }}"
+        run: echo " CI/CD pipeline complete for commit ${{ github.sha }}"
