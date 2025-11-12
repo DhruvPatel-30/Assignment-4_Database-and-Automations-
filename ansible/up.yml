@@ -8,37 +8,45 @@
     mysql_image: mysql:8
     mysql_root_password: "DhruvPass!9062297"
     mysql_database: subscriptions_dhruv
+    mysql_port: 3307
     flyway_local_dir: "{{ playbook_dir }}/../flyway"
 
   tasks:
     - name: Pull MySQL Docker image
-      ansible.builtin.command: docker pull {{ mysql_image }}
+      community.docker.docker_image:
+        name: "{{ mysql_image }}"
+        source: pull
 
-    - name: Run MySQL container
+    - name: Run MySQL container using Docker CLI
       ansible.builtin.command: >
         docker run -d
         --name {{ mysql_container_name }}
         -e MYSQL_ROOT_PASSWORD={{ mysql_root_password }}
         -e MYSQL_DATABASE={{ mysql_database }}
-        -p 3307:3306
+        -p {{ mysql_port }}:3306
         {{ mysql_image }}
+      register: mysql_run
+      changed_when: "'bf' in mysql_run.stdout"
 
     - name: Wait for MySQL to be ready
-      ansible.builtin.wait_for:
+      wait_for:
         host: 127.0.0.1
-        port: 3307
+        port: "{{ mysql_port }}"
         delay: 5
         timeout: 60
 
     - name: Pull Flyway Docker image
-      ansible.builtin.command: docker pull flyway/flyway:10
+      community.docker.docker_image:
+        name: flyway/flyway:10
+        source: pull
 
     - name: Run Flyway initial migrations using Docker CLI
       ansible.builtin.command: >
         docker run --rm
         -v {{ flyway_local_dir }}:/flyway
+        --network host
         flyway/flyway:10
-        -url=jdbc:mysql://host.docker.internal:3307/{{ mysql_database }}
+        -url=jdbc:mysql://host.docker.internal:{{ mysql_port }}/{{ mysql_database }}
         -user=root
         -password={{ mysql_root_password }}
         -locations=filesystem:/flyway/migrations_initial
