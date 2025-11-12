@@ -40,10 +40,9 @@
       ansible.builtin.command:
         cmd: >
           docker run --rm
-          -v {{ flyway_local_dir }}:/flyway
-          --network host
+          -v "{{ flyway_local_dir }}:/flyway"
           flyway/flyway:10
-          -url=jdbc:mysql://127.0.0.1:3307/{{ mysql_database }}
+          -url=jdbc:mysql://host.docker.internal:3307/{{ mysql_database }}
           -user=root
           -password={{ mysql_root_password }}
           -locations=filesystem:/flyway/migrations_initial
