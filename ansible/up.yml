@@ -2,50 +2,43 @@
 - name: Bring up MySQL and run Flyway migrations
   hosts: localhost
   connection: local
-  gather_facts: false
-
-  vars:
-    mysql_container_name: a4-mysql-dhruv
-    mysql_image: mysql:8
-    mysql_root_password: "DhruvPass!9062297"
-    mysql_database: subscriptions_dhruv
-    flyway_local_dir: "{{ playbook_dir }}/../flyway"
-
   tasks:
-    - name: Ensure community.docker collection is present
-      ansible.builtin.command: ansible-galaxy collection install community.docker
-      changed_when: false
-      failed_when: false
-
-    - name: Start MySQL container
+    - name: Run MySQL container
       community.docker.docker_container:
-        name: "{{ mysql_container_name }}"
-        image: "{{ mysql_image }}"
+        name: mysql_dhruv
+        image: mysql:8
         state: started
-        restart_policy: unless-stopped
-        env:
-          MYSQL_ROOT_PASSWORD: "{{ mysql_root_password }}"
-          MYSQL_DATABASE: "{{ mysql_database }}"
-        published_ports:
+        restart_policy: always
+        ports:
           - "3307:3306"
+        env:
+          MYSQL_ROOT_PASSWORD: "DhruvPass!9062297"
+          MYSQL_DATABASE: "subscriptions_dhruv"
+        volumes:
+          - "{{ playbook_dir }}/../mysql_data:/var/lib/mysql"
+      register: mysql_container
 
-    - name: Wait for MySQL service to be reachable
-      wait_for:
-        host: 127.0.0.1
+    - name: Wait for MySQL to be ready
+      ansible.builtin.wait_for:
+        host: "127.0.0.1"
         port: 3307
-        delay: 5
+        delay: 10
         timeout: 60
 
     - name: Run Flyway initial migrations using Docker CLI
       ansible.builtin.command: >
         docker run --rm
-        -v {{ flyway_local_dir }}:/flyway
-        --network host
+        -v {{ playbook_dir }}/../flyway:/flyway
+        --network bridge
         flyway/flyway:10
-        -url=jdbc:mysql://localhost:3307/{{ mysql_database }}
+        -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv
         -user=root
-        -password={{ mysql_root_password }}
+        -password=DhruvPass!9062297
         -locations=filesystem:/flyway/migrations_initial
         migrate
-      register: flyway_result
-      changed_when: "'Successfully applied' in flyway_result.stdout"
+      register: flyway_output
+      ignore_errors: false
+
+    - name: Show Flyway output
+      ansible.builtin.debug:
+        var: flyway_output.stdout
