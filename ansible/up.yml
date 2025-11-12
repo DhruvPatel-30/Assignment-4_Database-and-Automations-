@@ -43,7 +43,7 @@
           -v {{ flyway_local_dir }}:/flyway
           --network host
           flyway/flyway:10
-          -url=jdbc:mysql://host.docker.internal:3307/{{ mysql_database }}
+          -url=jdbc:mysql://127.0.0.1:3307/{{ mysql_database }}
           -user=root
           -password={{ mysql_root_password }}
           -locations=filesystem:/flyway/migrations_initial
