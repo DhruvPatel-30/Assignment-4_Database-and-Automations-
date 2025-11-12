@@ -39,29 +39,27 @@ jobs:
           done
 
       # 4. Run Flyway initial migrations
-      - name: Run Flyway initial migrations
+      - name: Run Flyway migrations
         run: |
           docker run --rm \
-            --network a4-network \
-            -v ${{ github.workspace }}/flyway:/flyway \
+            -v ${{ github.workspace }}/flyway:/flyway/sql \
+            --network host \
             flyway/flyway:10 \
-            -url=jdbc:mysql://a4-mysql-dhruv:3306/subscriptions_dhruv \
-            -user=root \
-            -password=DhruvPass!9062297 \
-            -locations=filesystem:/flyway/migrations_initial \
+            -url=jdbc:mysql://localhost:3307/subscriptions_dhruv \
+            -user=root -password=DhruvPass!9062297 \
+            -locations=filesystem:/flyway/sql/migrations_initial \
             migrate
 
       # 5. Run Flyway incremental migrations
-      - name: Run Flyway incremental migrations
+      - name: Run Flyway migrations
         run: |
           docker run --rm \
-            --network a4-network \
-            -v ${{ github.workspace }}/flyway:/flyway \
+            -v ${{ github.workspace }}/flyway:/flyway/sql \
+            --network host \
             flyway/flyway:10 \
-            -url=jdbc:mysql://a4-mysql-dhruv:3306/subscriptions_dhruv \
-            -user=root \
-            -password=DhruvPass!9062297 \
-            -locations=filesystem:/flyway/migrations_incremental \
+            -url=jdbc:mysql://localhost:3307/subscriptions_dhruv \
+            -user=root -password=DhruvPass!9062297 \
+            -locations=filesystem:/flyway/sql/migrations_incremental \
             migrate
 
       # 6. Run pytest tests
