@@ -25,7 +25,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install ansible[community.docker]  # for docker modules
-          ansible-galaxy collection install community.docker
+          
 
       - name: Start MySQL via Ansible
         env:

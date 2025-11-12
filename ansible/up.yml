@@ -27,15 +27,15 @@
 
     - name: Run Flyway initial migrations using Docker CLI
       ansible.builtin.command: >
-        docker run --rm
-        -v {{ playbook_dir }}/../flyway:/flyway
-        --network bridge
-        flyway/flyway:10
-        -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv
-        -user=root
-        -password=DhruvPass!9062297
-        -locations=filesystem:/flyway/migrations_initial
-        migrate
+          docker run --rm
+          -v {{ playbook_dir }}/../flyway:/flyway
+          --network bridge
+          flyway/flyway:10
+          -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv
+          -user=root
+          -password=DhruvPass!9062297
+          -locations=filesystem:/flyway/migrations_initial
+          migrate
       register: flyway_output
       ignore_errors: false
 
