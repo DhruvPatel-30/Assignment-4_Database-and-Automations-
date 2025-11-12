@@ -39,6 +39,7 @@
         name: flyway_runner_dhruv
         image: flyway/flyway:10
         command:
+          - flyway
           - -url=jdbc:mysql://host.docker.internal:3306/{{ mysql_database }}
           - -user=root
           - -password={{ mysql_root_password }}
