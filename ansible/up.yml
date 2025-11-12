@@ -38,13 +38,12 @@
       community.docker.docker_container:
         name: flyway_runner_dhruv
         image: flyway/flyway:10
-        command: >
-          flyway
-          -url=jdbc:mysql://localhost:3307/subscriptions_dhruv
-          -user=root
-          -password=DhruvPass!9062297
-          -locations=filesystem:/flyway/migrations_initial
-          migrate
+        command:
+          - "-url=jdbc:mysql://localhost:3307/subscriptions_dhruv"
+          - "-user=root"
+          - "-password=DhruvPass!9062297"
+          - "-locations=filesystem:/flyway/migrations_initial"
+          - "migrate"
         volumes:
           - "{{ flyway_local_dir }}:/flyway"
         network_mode: host
