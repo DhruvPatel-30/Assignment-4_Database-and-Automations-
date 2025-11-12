@@ -3,20 +3,15 @@
   hosts: localhost
   connection: local
   tasks:
-    - name: Run MySQL container
-      community.docker.docker_container:
-        name: mysql_dhruv
-        image: mysql:8
-        state: started
-        restart_policy: always
-        ports:
-          - "3307:3306"
-        env:
-          MYSQL_ROOT_PASSWORD: "DhruvPass!9062297"
-          MYSQL_DATABASE: "subscriptions_dhruv"
-        volumes:
-          - "{{ playbook_dir }}/../mysql_data:/var/lib/mysql"
-      register: mysql_container
+
+    - name: Run MySQL container using Docker CLI
+      ansible.builtin.command: >
+        docker run -d --name mysql_dhruv
+        -e MYSQL_ROOT_PASSWORD=DhruvPass!9062297
+        -e MYSQL_DATABASE=subscriptions_dhruv
+        -p 3307:3306
+        mysql:8
+      ignore_errors: yes
 
     - name: Wait for MySQL to be ready
       ansible.builtin.wait_for:
@@ -27,18 +22,14 @@
 
     - name: Run Flyway initial migrations using Docker CLI
       ansible.builtin.command: >
-          docker run --rm
-          -v {{ playbook_dir }}/../flyway:/flyway
-          --network bridge
-          flyway/flyway:10
-          -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv
-          -user=root
-          -password=DhruvPass!9062297
-          -locations=filesystem:/flyway/migrations_initial
-          migrate
-      register: flyway_output
-      ignore_errors: false
-
-    - name: Show Flyway output
-      ansible.builtin.debug:
-        var: flyway_output.stdout
+        docker run --rm
+        -v {{ playbook_dir }}/../flyway:/flyway
+        --network host
+        flyway/flyway:10
+        -url=jdbc:mysql://localhost:3307/subscriptions_dhruv
+        -user=root
+        -password=DhruvPass!9062297
+        -locations=filesystem:/flyway/migrations_initial
+        migrate
+      args:
+        chdir: "{{ playbook_dir }}"
