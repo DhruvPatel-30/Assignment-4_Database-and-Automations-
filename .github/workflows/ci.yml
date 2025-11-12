@@ -25,12 +25,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install ansible[community.docker]  # for docker modules
+          ansible-galaxy collection install community.docker
 
-      # 3. Bring up MySQL & run Flyway migrations (handled inside up.yml)
-      - name: Start MySQL via Ansible (includes Flyway)
+      - name: Start MySQL via Ansible
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
         run: ansible-playbook ansible/up.yml
 
-      # 4. Run pytest tests (CRUD + DB validation)
+            # 4. Run pytest tests (CRUD + DB validation)
       - name: Run CRUD tests
         env:
           DB_HOST: 127.0.0.1
