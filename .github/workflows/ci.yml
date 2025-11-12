@@ -78,6 +78,6 @@ jobs:
       - name: Stop and remove MySQL container
         run: docker rm -f a4-mysql-dhruv || true
 
-      # 8. Pipeline complete message
+      ## 8. Pipeline complete message
       - name: Deployment done
         run: echo " CI/CD pipeline complete for commit ${{ github.sha }}"
