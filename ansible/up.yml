@@ -38,6 +38,7 @@
       community.docker.docker_container:
         name: flyway_runner_dhruv
         image: flyway/flyway:10
+        entrypoint: ["flyway"]
         command:
           - "-url=jdbc:mysql://localhost:3307/subscriptions_dhruv"
           - "-user=root"
