@@ -39,28 +39,20 @@ jobs:
           done
 
       # 4. Run Flyway initial migrations
-      - name: Run Flyway migrations
+      - name: Clean database and run Flyway migrations
         run: |
+          set -e
+          echo " Dropping and recreating database..."
+          mysql -h127.0.0.1 -P3307 -uroot -pDhruvPass!9062297 -e "DROP DATABASE IF EXISTS subscriptions_dhruv; CREATE DATABASE subscriptions_dhruv;"
+          
           docker run --rm \
             -v ${{ github.workspace }}/flyway:/flyway/sql \
             --network host \
             flyway/flyway:10 \
             -url=jdbc:mysql://localhost:3307/subscriptions_dhruv \
             -user=root -password=DhruvPass!9062297 \
-            -locations=filesystem:/flyway/sql/migrations_initial \
-            migrate
-
-      # 5. Run Flyway incremental migrations
-      - name: Run Flyway migrations
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}/flyway:/flyway/sql \
-            --network host \
-            flyway/flyway:10 \
-            -url=jdbc:mysql://localhost:3307/subscriptions_dhruv \
-            -user=root -password=DhruvPass!9062297 \
-            -locations=filesystem:/flyway/sql/migrations_incremental \
-            migrate
+            -locations=filesystem:/flyway/sql/migrations_initial,filesystem:/flyway/sql/migrations_incremental \
+            clean migrate
 
       # 6. Run pytest tests
       - name: Run CRUD tests
