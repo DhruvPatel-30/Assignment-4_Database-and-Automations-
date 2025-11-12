@@ -10,27 +10,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
+      # 1. Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
 
       # 2. Start MySQL container
       - name: Start MySQL container
         run: |
+          docker network create a4-network || true
           docker run -d \
             --name a4-mysql-dhruv \
+            --network a4-network \
             -e MYSQL_ROOT_PASSWORD=DhruvPass!9062297 \
             -e MYSQL_DATABASE=subscriptions_dhruv \
             -p 3307:3306 \
             mysql:8
 
-      # 3. Wait for MySQL to be ready
+      # 3. Wait until MySQL is ready
       - name: Wait for MySQL to be ready
         run: |
           echo "Waiting for MySQL to be ready..."
           for i in {1..30}; do
             if docker exec a4-mysql-dhruv mysqladmin ping -h127.0.0.1 -uroot -pDhruvPass!9062297 --silent; then
-              echo "MySQL is ready!"
+              echo " MySQL is ready!"
               break
             fi
             sleep 3
@@ -40,9 +42,10 @@ jobs:
       - name: Run Flyway initial migrations
         run: |
           docker run --rm \
+            --network a4-network \
             -v ${{ github.workspace }}/flyway:/flyway \
             flyway/flyway:10 \
-            -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv \
+            -url=jdbc:mysql://a4-mysql-dhruv:3306/subscriptions_dhruv \
             -user=root \
             -password=DhruvPass!9062297 \
             -locations=filesystem:/flyway/migrations_initial \
@@ -52,9 +55,10 @@ jobs:
       - name: Run Flyway incremental migrations
         run: |
           docker run --rm \
+            --network a4-network \
             -v ${{ github.workspace }}/flyway:/flyway \
             flyway/flyway:10 \
-            -url=jdbc:mysql://host.docker.internal:3307/subscriptions_dhruv \
+            -url=jdbc:mysql://a4-mysql-dhruv:3306/subscriptions_dhruv \
             -user=root \
             -password=DhruvPass!9062297 \
             -locations=filesystem:/flyway/migrations_incremental \
@@ -74,6 +78,6 @@ jobs:
       - name: Stop and remove MySQL container
         run: docker rm -f a4-mysql-dhruv || true
 
-      # 8. Deployment complete message
+      # 8. Pipeline complete message
       - name: Deployment done
         run: echo " CI/CD pipeline complete for commit ${{ github.sha }}"
