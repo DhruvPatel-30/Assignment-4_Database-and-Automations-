@@ -1,13 +1,67 @@
----
-- name: Assignment 4 MySQL container
-  hosts: localhost
-  connection: local
-  gather_facts: false
-  vars:
-    mysql_container_name: a4-mysql-dhruv
-  tasks:
-    - name: Stop and remove MySQL container
-      community.docker.docker_container:
-        name: "{{ mysql_container_name }}"
-        state: absent
-        force_kill: true
+name: CI — Flyway + Tests + Ansible (Dhruv)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  test-and-migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Set up Python (for pytest & Ansible)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ansible[community.docker]  # for docker modules
+
+      # 3. Bring up MySQL via Ansible up.yml
+      - name: Start MySQL via Ansible
+        run: ansible-playbook ansible/up.yml
+
+      # 4. Run Flyway migrations (initial)
+      - name: Flyway initial migrations
+        run: |
+          docker run --rm -v "${{ github.workspace }}/flyway":/flyway flyway/flyway:10 \
+            -url=jdbc:mysql://127.0.0.1:3306/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false \
+            -user=root \
+            -password=DhruvPass!9062297 \
+            -locations=filesystem:/flyway/migrations_initial migrate
+
+      # 5. Run Flyway migrations (incremental)
+      - name: Flyway incremental migrations
+        run: |
+          docker run --rm -v "${{ github.workspace }}/flyway":/flyway flyway/flyway:10 \
+            -url=jdbc:mysql://127.0.0.1:3306/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false \
+            -user=root \
+            -password=DhruvPass!9062297 \
+            -locations=filesystem:/flyway/migrations_incremental migrate
+
+      # 6. Run pytest tests
+      - name: Run CRUD tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_NAME: subscriptions_dhruv
+          DB_USER: root
+          DB_PASSWORD: DhruvPass!9062297
+        run: pytest -q tests/test_subscribers.py
+
+      # 7. Tear down MySQL via Ansible down.yml
+      - name: Stop MySQL via Ansible
+        run: ansible-playbook ansible/down.yml
+
+      # 8. Deployment echo
+      - name: Deployment done
+        run: echo "Deployment done for commit ${{ github.sha }}"
