@@ -34,20 +34,16 @@
         delay: 5
         timeout: 60
 
-    - name: Run Flyway initial migrations (inside Flyway Docker)
-      community.docker.docker_container:
-        name: flyway_runner_dhruv
-        image: flyway/flyway:10
-        entrypoint: ["flyway"]
-        command:
-          - "-url=jdbc:mysql://localhost:3307/subscriptions_dhruv"
-          - "-user=root"
-          - "-password=DhruvPass!9062297"
-          - "-locations=filesystem:/flyway/migrations_initial"
-          - "migrate"
-        volumes:
-          - "{{ flyway_local_dir }}:/flyway"
-        network_mode: host
-        auto_remove: yes
-        detach: no
-        state: started
+    - name: Run Flyway initial migrations using Docker CLI
+  ansible.builtin.command: >
+    docker run --rm
+    -v {{ flyway_local_dir }}:/flyway
+    --network host
+    flyway/flyway:10
+    -url=jdbc:mysql://localhost:3307/{{ mysql_database }}
+    -user=root
+    -password={{ mysql_root_password }}
+    -locations=filesystem:/flyway/migrations_initial
+    migrate
+  register: flyway_result
+  changed_when: "'Successfully applied' in flyway_result.stdout"
