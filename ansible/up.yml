@@ -9,7 +9,6 @@
     mysql_root_password: "DhruvPass!9062297"
     mysql_database: subscriptions_dhruv
     flyway_local_dir: "{{ playbook_dir }}/../flyway"
-    docker_network_name: a4_default   # <-- replace with your actual Docker network if different
 
   tasks:
     - name: Pull MySQL Docker image
@@ -19,7 +18,6 @@
       ansible.builtin.command: >
         docker run -d
         --name {{ mysql_container_name }}
-        --network {{ docker_network_name }}
         -e MYSQL_ROOT_PASSWORD={{ mysql_root_password }}
         -e MYSQL_DATABASE={{ mysql_database }}
         -p 3307:3306
@@ -39,9 +37,8 @@
       ansible.builtin.command: >
         docker run --rm
         -v {{ flyway_local_dir }}:/flyway
-        --network {{ docker_network_name }}
         flyway/flyway:10
-        -url=jdbc:mysql://{{ mysql_container_name }}:3306/{{ mysql_database }}
+        -url=jdbc:mysql://host.docker.internal:3307/{{ mysql_database }}
         -user=root
         -password={{ mysql_root_password }}
         -locations=filesystem:/flyway/migrations_initial
