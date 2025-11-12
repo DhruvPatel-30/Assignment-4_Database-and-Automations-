@@ -1,14 +1,91 @@
-- name: Clean database and run Flyway migrations
-  run: |
-    set -e
-    echo "⚙️ Dropping and recreating database..."
-    mysql -h127.0.0.1 -P3307 -uroot -pDhruvPass!9062297 -e "DROP DATABASE IF EXISTS subscriptions_dhruv; CREATE DATABASE subscriptions_dhruv;"
-    
-    echo "🚀 Running Flyway migrations..."
-    flyway \
-      -url="jdbc:mysql://127.0.0.1:3307/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false" \
-      -user=root \
-      -password=DhruvPass!9062297 \
-      -locations=filesystem:${{ github.workspace }}/flyway/migrations_initial,filesystem:${{ github.workspace }}/flyway/migrations_incremental \
-      -cleanOnValidationError=true \
-      migrate
+name: CI — Flyway + Tests (Dhruv)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  test-and-migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
+
+            - name: Install Python dependencies
+              run: |
+                python -m pip install --upgrade pip
+                pip install pytest
+                pip install -r requirements.txt
+
+      # 2️⃣ Install MySQL client and Flyway CLI
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mysql-client unzip wget
+          wget -q https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/10.22.0/flyway-commandline-10.22.0-linux-x64.tar.gz
+          tar -xzf flyway-commandline-10.22.0-linux-x64.tar.gz
+          sudo ln -s $(pwd)/flyway-10.22.0/flyway /usr/local/bin/flyway
+
+      # 3️⃣ Start MySQL container
+      - name: Start MySQL container
+        run: |
+          docker run -d \
+            --name a4-mysql-dhruv \
+            -e MYSQL_ROOT_PASSWORD=DhruvPass!9062297 \
+            -e MYSQL_DATABASE=subscriptions_dhruv \
+            -p 3307:3306 \
+            mysql:8
+
+      # 4️⃣ Wait until MySQL is ready
+      - name: Wait for MySQL to be ready
+        run: |
+          echo "Waiting for MySQL to be ready..."
+          for i in {1..30}; do
+            if mysqladmin ping -h127.0.0.1 -P3307 -uroot -pDhruvPass!9062297 --silent; then
+              echo "✅ MySQL is ready!"
+              break
+            fi
+            sleep 3
+          done
+
+      # 5️⃣ Clean DB and run all migrations (initial + incremental)
+      - name: Clean database and run Flyway migrations
+        run: |
+          set -e
+          echo "⚙️ Dropping and recreating database..."
+          mysql -h127.0.0.1 -P3307 -uroot -pDhruvPass!9062297 -e "DROP DATABASE IF EXISTS subscriptions_dhruv; CREATE DATABASE subscriptions_dhruv;"
+          
+          echo "🚀 Running Flyway migrations..."
+          flyway \
+            -url="jdbc:mysql://127.0.0.1:3307/subscriptions_dhruv?allowPublicKeyRetrieval=true&useSSL=false" \
+            -user=root \
+            -password=DhruvPass!9062297 \
+            -locations=filesystem:${{ github.workspace }}/flyway/migrations_initial,filesystem:${{ github.workspace }}/flyway/migrations_incremental \
+            -cleanOnValidationError=true \
+            migrate
+
+      # 6️⃣ Run pytest tests
+      - name: Run CRUD tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3307
+          DB_NAME: subscriptions_dhruv
+          DB_USER: root
+          DB_PASSWORD: DhruvPass!9062297
+        run: pytest -q tests/test_subscribers.py
+
+      # 7️⃣ Stop MySQL container
+      - name: Stop and remove MySQL container
+        run: docker rm -f a4-mysql-dhruv || true
+
+      # 8️⃣ Pipeline complete message
+      - name: Deployment done
+        run: echo "🎉 CI/CD pipeline complete for commit ${{ github.sha }}"
