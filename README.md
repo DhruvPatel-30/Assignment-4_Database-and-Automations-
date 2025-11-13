@@ -81,5 +81,5 @@ It provisions a MySQL environment, applies schema migrations, and validates them
 ![alt text](<commit for repo in cicd.png>)
 
 ### CI_CD Run Successfully:
- [alt text](image-2.png)   
+![alt text](image-2.png)   
 
