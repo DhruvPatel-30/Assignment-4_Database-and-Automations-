@@ -71,3 +71,6 @@ It provisions a MySQL environment, applies schema migrations, and validates them
     " CI/CD pipeline complete for commit ${{ github.sha }}"
     ![alt text](<commit for repo in cicd.png>)
 
+ # CI_CD Run Successfully:
+ ![alt text](image-2.png)   
+
