@@ -14,18 +14,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️ Set up Python
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+        # 2️ Set up Python
+        - name: Set up Python
+          uses: actions/setup-python@v4
+          with:
+            python-version: '3.11'
 
-      # 3️ Install Python dependencies
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+        # 3️ Install Python dependencies
+        - name: Install Python dependencies
+          run: |
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
+            pip install pytest
 
       # 4️ Install MySQL client and Flyway CLI
       - name: Install MySQL client & Flyway CLI
